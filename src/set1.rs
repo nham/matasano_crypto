@@ -1,5 +1,7 @@
 use rustc_serialize::base64::{self, ToBase64};
 use rustc_serialize::hex::FromHex;
+use std::collections::HashMap;
+
 
 // Challenge 1
 fn hex_to_base64(hex: &str) -> String {
@@ -15,6 +17,158 @@ fn fixed_xor(buf1: &[u8], buf2: &[u8]) -> Vec<u8> {
     }
     v
 }
+
+fn partial_ascii_display(v: &Vec<u8>) {
+    for &e in v.iter() {
+        if e >= 0x20 && e < 0x7f {
+            print!("{}", e as char);
+        } else {
+            print!("_");
+        }
+    }
+    println!("");
+}
+
+// Challenge 3
+pub fn single_byte_xor_cipher() -> String {
+    let x_str = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+    let x = hex_to_bytes(x_str);
+
+    let mut best_score = ::std::f64::MIN;
+    let mut best = String::new();
+
+    for key in 0x20..0x7f {
+        let mut v = Vec::new();
+        for _ in 0..x.len() { v.push(key); }
+
+        let xor = fixed_xor(x.as_slice(), v.as_slice());
+        partial_ascii_display(&xor);
+
+        match String::from_utf8(xor) {
+            Err(_) => continue,
+            Ok(candidate) => {
+                let candidate_score = score(&candidate[..]);
+                println!("score:  {}", candidate_score);
+
+                if candidate_score > best_score {
+                    best_score = candidate_score;
+                    best = candidate;
+                }
+            },
+        }
+        println!("");
+
+    }
+
+    println!("best_score = {}", best_score);
+    best
+}
+
+fn etaoin_map<T: Copy>(vals: [T; 13]) -> HashMap<char, T> {
+    let mut freqs = HashMap::new();
+    let chars = ['e', 't', 'a', 'o', 'i', 'n',
+                     's', 'h', 'r', 'd', 'l', 'c', 'u'];
+    for i in 0..13 {
+        freqs.insert(chars[i], vals[i]);
+    }
+    freqs
+}
+
+fn score(x: &str) -> f64 {
+    let mut num_alphas = 0;
+    // e, t, a, o, i, n
+    // s, h, r, d, l, c, u
+    let freqs_array = [0.12702, 0.09056, 0.08167, 0.07507, 0.06966, 0.06749,
+                       0.06327, 0.06094, 0.05987, 0.04253, 0.04025, 0.02782, 0.02758];
+    let mut freq_sum = 0.;
+    for &val in freqs_array.iter() {
+        freq_sum += val;
+    }
+
+    let freqs = etaoin_map(freqs_array);
+    let mut num_occurrences = HashMap::new();
+
+    // Phase 1: occurrence counting
+    for mut c in x.chars() {
+        c = c.to_lowercase().next().expect("couldn't lowercase a char");
+        if c.is_alphabetic() {
+            num_alphas += 1;
+            if freqs.contains_key(&c) {
+                let num = num_occurrences.entry(c).or_insert(0);
+                *num += 1;
+            }
+        } else if c.is_whitespace() {
+            let num = num_occurrences.entry(' ').or_insert(0);
+            *num += 1;
+        } else {
+            let num = num_occurrences.entry('\x00').or_insert(0);
+            *num += 1;
+        }
+    }
+
+    // Phase 2: error calculation
+    let mut total_error = 0.;
+
+    for ch in freqs.keys() {
+        let expected_occurrences = *freqs.get(ch).unwrap() * (num_alphas as f64);
+        let actual_occurrences = match num_occurrences.get(ch) {
+            Some(&count) => count as f64,
+            None => 0.,
+        };
+        let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
+        println!("{} error = {}", ch, error);
+        total_error += error;
+    }
+
+    let avg_word_length = 5.;
+    match num_occurrences.get(&' ') {
+        Some(&count) => {
+            // find the biggest k such that 5k + k - 1 <= x.len()
+            // (wolfram alpha says the average length of an english word
+            // is 5.1 letters. I'm rounding down to 5 here)
+            let k = (x.len() + 1)/6; // rounds down automatically
+
+            // check if k + 1 is closer
+            // the real condition we want to check is if
+            // |5(k+1) + k - x.len()| < |x.len() - (5k + k - 1)|
+            //
+            // but by assumption k is such that 5k + k - 1 < x.len()
+            // so we can remove absolute value on the right
+            // also we must have 5(k+1) + k > x.len(), because otherwise
+            // k would not be the greatest integer such that 5k + k - 1 <= x.len()
+            // so the absolute value on the left can be removed as well to obtain
+            //
+            // 5k + k + 5 - x.len() < x.len() - 5k - k + 1
+            //
+            // which simplifies to:
+            let num_words = if 5*k + k + 2 < x.len() {
+                k + 1
+            } else {
+                k
+            };
+
+            let expected_occurrences = (num_words - 1) as f64;
+            let actual_occurrences = count as f64;
+            let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
+            println!("ws error = {}", error);
+            total_error += error;
+        },
+        _ => {}
+    }
+
+    match num_occurrences.get(&'\x00') {
+        Some(&count) => {
+            let expected_occurrences = (1. - freq_sum) * (x.len() as f64);
+            let error = (expected_occurrences - (count as f64)).powi(2);
+            println!("other error = {}", error);
+            total_error += 2. * error;
+        },
+        _ => {}
+    }
+
+    -total_error
+}
+
 
 // util
 fn hex_to_bytes(hex: &str) -> Vec<u8> {

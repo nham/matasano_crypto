@@ -2,8 +2,10 @@
 
 extern crate rustc_serialize;
 
+use set1::single_byte_xor_cipher;
+
 mod set1;
 
 fn main() {
-    println!("Hello, world!");
+    println!("result: {}", single_byte_xor_cipher());
 }
