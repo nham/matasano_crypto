@@ -42,7 +42,7 @@ pub fn single_byte_xor_cipher() -> String {
         let mut v = Vec::new();
         for _ in 0..x.len() { v.push(key); }
 
-        let xor = fixed_xor(x.as_slice(), v.as_slice());
+        let xor = fixed_xor(&x, &v);
         // partial_ascii_display(&xor);
 
         match String::from_utf8(xor) {
@@ -186,10 +186,9 @@ mod tests {
         let a = "1c0111001f010100061a024b53535009181c";
         let b = "686974207468652062756c6c277320657965";
         let expected_result = "746865206b696420646f6e277420706c6179";
-        let xor = fixed_xor(hex_to_bytes(a).as_slice(),
-                            hex_to_bytes(b).as_slice());
+        let xor = fixed_xor(&hex_to_bytes(a), &hex_to_bytes(b));
 
-        assert_eq!(hex_to_bytes(expected_result), xor.as_slice());
+        assert_eq!(hex_to_bytes(expected_result), &xor);
     }
 
     #[test]
