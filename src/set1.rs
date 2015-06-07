@@ -65,44 +65,37 @@ pub fn single_byte_xor_cipher() -> String {
     best
 }
 
-fn etaoin_map<T: Copy>(vals: [T; 13]) -> HashMap<char, T> {
-    let mut freqs = HashMap::new();
-    let chars = ['e', 't', 'a', 'o', 'i', 'n',
-                     's', 'h', 'r', 'd', 'l', 'c', 'u'];
-    for i in 0..13 {
-        freqs.insert(chars[i], vals[i]);
-    }
-    freqs
-}
-
 fn score(x: &str) -> f64 {
-    let mut num_alphas = 0;
-    // e, t, a, o, i, n
-    // s, h, r, d, l, c, u
-    let freqs_array = [0.12702, 0.09056, 0.08167, 0.07507, 0.06966, 0.06749,
-                       0.06327, 0.06094, 0.05987, 0.04253, 0.04025, 0.02782, 0.02758];
-    let mut freq_sum = 0.;
-    for &val in freqs_array.iter() {
-        freq_sum += val;
+    // from http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+    let chars = ['e', 't', 'a', 'o', 'i', 'n',
+                 's', 'h', 'r', 'd', 'l', 'c',
+                 'u', 'm', 'w', 'f', 'g', 'y',
+                 'p', 'b', 'v', 'k', 'j', 'x',
+                 'q', 'z'];
+    // round towards even
+    let freqs_array = [0.1270, 0.0906, 0.0817, 0.0751, 0.0697, 0.0675,
+                 0.0633, 0.0609, 0.0599, 0.0425, 0.0402, 0.0278,
+                 0.0276, 0.0241, 0.0236, 0.0223, 0.0202, 0.0197,
+                 0.0193, 0.0149, 0.0098, 0.0077, 0.0015, 0.0015,
+                 0.0100, 0.007];
+    let mut freqs = HashMap::new();
+    for i in 0..chars.len() {
+        freqs.insert(chars[i], freqs_array[i]);
     }
 
-    let freqs = etaoin_map(freqs_array);
+    let mut num_alphas = 0;
+
     let mut num_occurrences = HashMap::new();
-    let mut num_other_alpha = 0;
     let mut num_whitespace = 0;
     let mut num_other = 0;
 
     // Phase 1: occurrence counting
     for mut c in x.chars() {
-        c = c.to_lowercase().next().expect("couldn't lowercase a char");
+        c = c.to_lowercase().next().unwrap();
         if c.is_alphabetic() {
             num_alphas += 1;
-            if freqs.contains_key(&c) {
-                let num = num_occurrences.entry(c).or_insert(0);
-                *num += 1;
-            } else {
-                num_other_alpha += 1;
-            }
+            let num = num_occurrences.entry(c).or_insert(0);
+            *num += 1;
         } else if c.is_whitespace() {
             num_whitespace += 1;
         } else {
@@ -113,7 +106,7 @@ fn score(x: &str) -> f64 {
     // Phase 2: error calculation
     let mut total_error = 0.;
 
-    // error from etaoin shrdlcu characters
+    // error from alphabetic
     for ch in freqs.keys() {
         let expected_occurrences = *freqs.get(ch).unwrap() * (num_alphas as f64);
         let actual_occurrences = match num_occurrences.get(ch) {
@@ -125,15 +118,7 @@ fn score(x: &str) -> f64 {
         total_error += 0.5 * error;
     }
 
-    println!("etaoin error: {}", total_error);
-
-
-    // error from alphabetic characters that arent etaoinshrdlcu
-    let expected_occurrences = (1. - freq_sum) * (num_alphas as f64);
-    let error: f64 = (expected_occurrences - (num_other_alpha as f64)).powi(2);
-    println!("other alpha error = {}", error);
-    total_error += error;
-
+    println!("alpha error: {}", total_error);
 
     // error from whitespace characters
     let avg_word_length = 5.;
