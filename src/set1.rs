@@ -38,18 +38,18 @@ pub fn single_byte_xor_cipher() -> String {
     let mut best = String::new();
 
     for key in 0x20..0x7f {
-        println!("\n\nKEY: {}", key as char);
+        // println!("\n\nKEY: {}", key as char);
         let mut v = Vec::new();
         for _ in 0..x.len() { v.push(key); }
 
         let xor = fixed_xor(x.as_slice(), v.as_slice());
-        partial_ascii_display(&xor);
+        // partial_ascii_display(&xor);
 
         match String::from_utf8(xor) {
             Err(_) => continue,
             Ok(candidate) => {
                 let candidate_score = score(&candidate[..]);
-                println!("score:  {}", candidate_score);
+                // println!("score:  {}", candidate_score);
 
                 if candidate_score > best_score {
                     best_score = candidate_score;
@@ -57,11 +57,11 @@ pub fn single_byte_xor_cipher() -> String {
                 }
             },
         }
-        println!("");
+        // println!("");
 
     }
 
-    println!("best_score = {}", best_score);
+    //println!("best_score = {}", best_score);
     best
 }
 
@@ -118,7 +118,7 @@ fn score(x: &str) -> f64 {
         total_error += 0.5 * error;
     }
 
-    println!("alpha error: {}", total_error);
+    //println!("alpha error: {}", total_error);
 
     // error from whitespace characters
     let avg_word_length = 5.;
@@ -149,16 +149,16 @@ fn score(x: &str) -> f64 {
     let expected_occurrences = (num_words - 1) as f64;
     let actual_occurrences = num_whitespace as f64;
     let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
-    println!("ws error = {}", error);
+    //println!("ws error = {}", error);
     total_error += 2. * error;
 
 
     // error from non-alphabetic, non-whitespace characters
     // arbitrary guess on how many others there should be: 1 for every 20 characters.
     let expected_occurrences = (x.len() as f64) / 20.;
-    println!("expected/actual others: {}/{}", expected_occurrences, num_other as f64);
+    //println!("expected/actual others: {}/{}", expected_occurrences, num_other as f64);
     let error = (expected_occurrences - (num_other as f64)).powi(2);
-    println!("other error = {}", error);
+    //println!("other error = {}", error);
     total_error += 2. * error;
 
     -total_error
