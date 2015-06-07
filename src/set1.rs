@@ -83,9 +83,8 @@ fn score(x: &str) -> f64 {
         freqs.insert(chars[i], freqs_array[i]);
     }
 
-    let mut num_alphas = 0;
-
     let mut num_occurrences = HashMap::new();
+    let mut num_alphas = 0;
     let mut num_whitespace = 0;
     let mut num_other = 0;
 
