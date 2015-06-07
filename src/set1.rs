@@ -173,7 +173,7 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{hex_to_base64, fixed_xor, hex_to_bytes};
+    use super::{hex_to_base64, fixed_xor, hex_to_bytes, single_byte_xor_cipher};
 
     #[test]
     fn test_hex_to_base64() {
@@ -191,5 +191,12 @@ mod tests {
                             hex_to_bytes(b).as_slice());
 
         assert_eq!(hex_to_bytes(expected_result), xor.as_slice());
+    }
+
+    #[test]
+    fn test_single_byte_xor_cipher() {
+        assert_eq!(single_byte_xor_cipher(),
+                   String::from("Cooking MC's like a pound of bacon"));
+
     }
 }
