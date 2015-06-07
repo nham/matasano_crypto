@@ -38,6 +38,7 @@ pub fn single_byte_xor_cipher() -> String {
     let mut best = String::new();
 
     for key in 0x20..0x7f {
+        println!("\n\nKEY: {}", key as char);
         let mut v = Vec::new();
         for _ in 0..x.len() { v.push(key); }
 
@@ -87,6 +88,9 @@ fn score(x: &str) -> f64 {
 
     let freqs = etaoin_map(freqs_array);
     let mut num_occurrences = HashMap::new();
+    let mut num_other_alpha = 0;
+    let mut num_whitespace = 0;
+    let mut num_other = 0;
 
     // Phase 1: occurrence counting
     for mut c in x.chars() {
@@ -96,19 +100,20 @@ fn score(x: &str) -> f64 {
             if freqs.contains_key(&c) {
                 let num = num_occurrences.entry(c).or_insert(0);
                 *num += 1;
+            } else {
+                num_other_alpha += 1;
             }
         } else if c.is_whitespace() {
-            let num = num_occurrences.entry(' ').or_insert(0);
-            *num += 1;
+            num_whitespace += 1;
         } else {
-            let num = num_occurrences.entry('\x00').or_insert(0);
-            *num += 1;
+            num_other += 1;
         }
     }
 
     // Phase 2: error calculation
     let mut total_error = 0.;
 
+    // error from etaoin shrdlcu characters
     for ch in freqs.keys() {
         let expected_occurrences = *freqs.get(ch).unwrap() * (num_alphas as f64);
         let actual_occurrences = match num_occurrences.get(ch) {
@@ -116,55 +121,60 @@ fn score(x: &str) -> f64 {
             None => 0.,
         };
         let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
-        println!("{} error = {}", ch, error);
-        total_error += error;
+        //println!("{} error = {}", ch, error);
+        total_error += 0.5 * error;
     }
 
+    println!("etaoin error: {}", total_error);
+
+
+    // error from alphabetic characters that arent etaoinshrdlcu
+    let expected_occurrences = (1. - freq_sum) * (num_alphas as f64);
+    let error: f64 = (expected_occurrences - (num_other_alpha as f64)).powi(2);
+    println!("other alpha error = {}", error);
+    total_error += error;
+
+
+    // error from whitespace characters
     let avg_word_length = 5.;
-    match num_occurrences.get(&' ') {
-        Some(&count) => {
-            // find the biggest k such that 5k + k - 1 <= x.len()
-            // (wolfram alpha says the average length of an english word
-            // is 5.1 letters. I'm rounding down to 5 here)
-            let k = (x.len() + 1)/6; // rounds down automatically
+    // find the biggest k such that 5k + k - 1 <= x.len()
+    // (wolfram alpha says the average length of an english word
+    // is 5.1 letters. I'm rounding down to 5 here)
+    let k = (x.len() + 1)/6; // rounds down automatically
 
-            // check if k + 1 is closer
-            // the real condition we want to check is if
-            // |5(k+1) + k - x.len()| < |x.len() - (5k + k - 1)|
-            //
-            // but by assumption k is such that 5k + k - 1 < x.len()
-            // so we can remove absolute value on the right
-            // also we must have 5(k+1) + k > x.len(), because otherwise
-            // k would not be the greatest integer such that 5k + k - 1 <= x.len()
-            // so the absolute value on the left can be removed as well to obtain
-            //
-            // 5k + k + 5 - x.len() < x.len() - 5k - k + 1
-            //
-            // which simplifies to:
-            let num_words = if 5*k + k + 2 < x.len() {
-                k + 1
-            } else {
-                k
-            };
+    // check if k + 1 is closer
+    // the real condition we want to check is if
+    // |5(k+1) + k - x.len()| < |x.len() - (5k + k - 1)|
+    //
+    // but by assumption k is such that 5k + k - 1 < x.len()
+    // so we can remove absolute value on the right
+    // also we must have 5(k+1) + k > x.len(), because otherwise
+    // k would not be the greatest integer such that 5k + k - 1 <= x.len()
+    // so the absolute value on the left can be removed as well to obtain
+    //
+    // 5k + k + 5 - x.len() < x.len() - 5k - k + 1
+    //
+    // which simplifies to:
+    let num_words = if 5*k + k + 2 < x.len() {
+        k + 1
+    } else {
+        k
+    };
 
-            let expected_occurrences = (num_words - 1) as f64;
-            let actual_occurrences = count as f64;
-            let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
-            println!("ws error = {}", error);
-            total_error += error;
-        },
-        _ => {}
-    }
+    let expected_occurrences = (num_words - 1) as f64;
+    let actual_occurrences = num_whitespace as f64;
+    let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
+    println!("ws error = {}", error);
+    total_error += 2. * error;
 
-    match num_occurrences.get(&'\x00') {
-        Some(&count) => {
-            let expected_occurrences = (1. - freq_sum) * (x.len() as f64);
-            let error = (expected_occurrences - (count as f64)).powi(2);
-            println!("other error = {}", error);
-            total_error += 2. * error;
-        },
-        _ => {}
-    }
+
+    // error from non-alphabetic, non-whitespace characters
+    // arbitrary guess on how many others there should be: 1 for every 20 characters.
+    let expected_occurrences = (x.len() as f64) / 20.;
+    println!("expected/actual others: {}/{}", expected_occurrences, num_other as f64);
+    let error = (expected_occurrences - (num_other as f64)).powi(2);
+    println!("other error = {}", error);
+    total_error += 2. * error;
 
     -total_error
 }
