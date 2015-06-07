@@ -66,7 +66,7 @@ pub fn single_byte_xor_cipher() -> String {
 }
 
 fn score(x: &str) -> f64 {
-    // from http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+    // from http://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
     let chars = ['e', 't', 'a', 'o', 'i', 'n',
                  's', 'h', 'r', 'd', 'l', 'c',
                  'u', 'm', 'w', 'f', 'g', 'y',
