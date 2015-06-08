@@ -253,15 +253,14 @@ mod tests {
     // Test challenge 5
     #[test]
     fn test_repeating_xor() {
-        let s1 = b"Burning 'em, if you ain't quick and nimble";
-        let s2 = b"I go crazy when I hear a cymbal";
+        let s = b"Burning 'em, if you ain't quick and nimble\n\
+                  I go crazy when I hear a cymbal";
         let key = b"ICE";
-        let hex1 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
-        let hex2 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
-        let xor1 = repeating_xor(s1, key);
-        let xor2 = repeating_xor(s2, key);
+        let hex = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d\
+                   63343c2a26226324272765272a282b2f20430a652e2c652a31\
+                   24333a653e2b2027630c692b20283165286326302e27282f";
+        let xor = repeating_xor(s, key);
 
-        assert_eq!(&xor1, &hex_to_bytes(hex1));
-        assert_eq!(&xor2, &hex_to_bytes(hex2));
+        assert_eq!(&xor, &hex_to_bytes(hex));
     }
 }
