@@ -191,16 +191,40 @@ pub fn challenge4() -> ::std::io::Result<String> {
     //single_byte_xor_cipher(output).0
 }
 
+
+// Challenge 5
+pub fn repeating_xor(input: &[u8], key: &[u8]) -> Vec<u8> {
+    assert!(input.len() >= key.len());
+    let repeats = input.len() / key.len();
+    let mut v = Vec::new();
+    for _ in 0..repeats {
+        for &b in key.iter() {
+            v.push(b);
+        }
+    }
+    for i in 0..(input.len() % key.len()) {
+        v.push(key[i]);
+    }
+    println!("right before fixed_xor call");
+    fixed_xor(input, &v)
+}
+
+
 // util
 fn hex_to_bytes(hex: &str) -> Vec<u8> {
-    hex.from_hex().unwrap()
+    match hex.from_hex() {
+        Ok(v) => v,
+        Err(e) => panic!("Error converting from hex string: {}", e),
+    }
 }
 
 
 #[cfg(test)]
 mod tests {
-    use super::{hex_to_base64, fixed_xor, hex_to_bytes, single_byte_xor_cipher};
+    use super::{hex_to_base64, fixed_xor, hex_to_bytes, challenge3};
+    use super::{repeating_xor};
 
+    // Test challenge 1
     #[test]
     fn test_hex_to_base64() {
         let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
@@ -208,6 +232,7 @@ mod tests {
         assert_eq!(base64, hex_to_base64(hex));
     }
 
+    // Test challenge 2
     #[test]
     fn test_fixed_xor() {
         let a = "1c0111001f010100061a024b53535009181c";
@@ -215,13 +240,28 @@ mod tests {
         let expected_result = "746865206b696420646f6e277420706c6179";
         let xor = fixed_xor(&hex_to_bytes(a), &hex_to_bytes(b));
 
-        assert_eq!(hex_to_bytes(expected_result), &xor);
+        assert_eq!(&hex_to_bytes(expected_result), &xor);
     }
 
+    // Test challenge 3
     #[test]
-    fn test_single_byte_xor_cipher() {
-        assert_eq!(single_byte_xor_cipher(),
+    fn test_challenge3() {
+        assert_eq!(challenge3(),
                    String::from("Cooking MC's like a pound of bacon"));
+    }
 
+    // Test challenge 5
+    #[test]
+    fn test_repeating_xor() {
+        let s1 = b"Burning 'em, if you ain't quick and nimble";
+        let s2 = b"I go crazy when I hear a cymbal";
+        let key = b"ICE";
+        let hex1 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
+        let hex2 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
+        let xor1 = repeating_xor(s1, key);
+        let xor2 = repeating_xor(s2, key);
+
+        assert_eq!(&xor1, &hex_to_bytes(hex1));
+        assert_eq!(&xor2, &hex_to_bytes(hex2));
     }
 }
