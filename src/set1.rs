@@ -1,6 +1,8 @@
 use rustc_serialize::base64::{self, ToBase64};
 use rustc_serialize::hex::FromHex;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
 
 
 // Challenge 1
@@ -30,9 +32,8 @@ fn partial_ascii_display(v: &Vec<u8>) {
 }
 
 // Challenge 3
-pub fn single_byte_xor_cipher() -> String {
-    let x_str = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
-    let x = hex_to_bytes(x_str);
+pub fn single_byte_xor_cipher(s: &str) -> (String, f64) {
+    let x = hex_to_bytes(s);
 
     let mut best_score = ::std::f64::MIN;
     let mut best = String::new();
@@ -61,8 +62,12 @@ pub fn single_byte_xor_cipher() -> String {
 
     }
 
-    //println!("best_score = {}", best_score);
-    best
+    (best, best_score)
+}
+
+pub fn challenge3() -> String {
+    let output = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+    single_byte_xor_cipher(output).0
 }
 
 fn score(x: &str) -> f64 {
@@ -163,6 +168,28 @@ fn score(x: &str) -> f64 {
     -total_error
 }
 
+
+// Challenge 4
+pub fn challenge4() -> ::std::io::Result<String> {
+    let file_name = "data/challenge4.txt";
+    let mut f = try!(File::open(file_name));
+    let mut s = String::new();
+    let mut best_score = ::std::f64::MIN;
+    let mut best = String::new();
+    let mut best_i = 0;
+    try!(f.read_to_string(&mut s));
+    for (i, line) in s.lines().enumerate() {
+        let (orig, score) = single_byte_xor_cipher(line);
+        if score > best_score {
+            best_score = score;
+            best = orig;
+            best_i = i;
+        }
+    }
+    println!("best one = {}", best_i);
+    Ok(best)
+    //single_byte_xor_cipher(output).0
+}
 
 // util
 fn hex_to_bytes(hex: &str) -> Vec<u8> {
