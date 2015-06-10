@@ -211,76 +211,23 @@ pub fn repeating_xor(input: &[u8], key: &[u8]) -> Vec<u8> {
 }
 
 // Challenge 6
-struct MemoMatrix<T> {
-    rows: usize,
-    cols: usize,
-    v: Vec<Option<T>>,
-}
-
-impl<T> MemoMatrix<T> {
-    fn new(rows: usize, cols: usize) -> Self {
-        let mut v = Vec::with_capacity(rows*cols);
-        for _ in 0..(rows*cols) {
-            v.push(None);
-        }
-        MemoMatrix { rows: rows, cols: cols, v: v }
+fn hamming_distance(buf1: &[u8], buf2: &[u8]) -> usize {
+    assert_eq!(buf1.len(), buf2.len());
+    let mut count = 0;
+    for (a, b) in buf1.iter().zip(buf2.iter()) {
+        count += count_ones(a ^ b);
     }
+    count
 }
 
-impl<T> Index<(usize, usize)> for MemoMatrix<T> {
-    type Output = Option<T>;
-    fn index<'a>(&'a self, (row, col): (usize, usize)) -> &'a Option<T> {
-        assert!(row < self.rows, "row index '{}' is out of bounds", row);
-        assert!(col < self.cols, "column index '{}' is out of bounds", col);
-        &self.v[row * self.cols + col]
+fn count_ones(mut x: u8) -> usize {
+    let mut count = 0;
+    if x & 0x01 > 0 { count += 1; }
+    for _ in 0..7 {
+        x = x >> 1;
+        if x & 0x01 > 0 { count += 1; }
     }
-}
-
-impl<T> IndexMut<(usize, usize)> for MemoMatrix<T> {
-    fn index_mut<'a>(&'a mut self, (row, col): (usize, usize)) -> &'a mut Option<T> {
-        assert!(row < self.rows, "row index '{}' is out of bounds", row);
-        assert!(col < self.cols, "column index '{}' is out of bounds", col);
-        &mut self.v[row * self.cols + col]
-    }
-}
-
-fn lev<'a, 'b>(s: &'a str, t: &'b str) -> usize {
-    let s_chars: Vec<char> = s.chars().collect();
-    let t_chars: Vec<char> = t.chars().collect();
-    // rect(i, j) is the minimal cost of an edit sequence that turns s[..i] into t[..j]
-    let mut rect = MemoMatrix::new(s.chars().count() + 1, t.chars().count() + 1);
-    ed(&mut rect, &s_chars[..], &t_chars[..])
-}
-
-fn ed<'a, 'b>(rect: &mut MemoMatrix<usize>, s: &'a [char], t: &'b [char]) -> usize {
-    let (i, j) = (s.len(), t.len());
-
-    // check if this has already been computed and use it if so
-    match rect[(i, j)] {
-        Some(dist) => return dist,
-        None => {},
-    }
-
-    let dist = if i == 0 {
-        j
-    } else if j == 0 {
-        i
-    } else {
-        let (a, b) = (i-1, j-1);
-        if s[a] == t[b] {
-            ed(rect, &s[..a], &t[..b])
-        } else {
-            let v = vec![
-                ed(rect, &s[..a], &t[..b]),
-                ed(rect, &s[..a], t),
-                ed(rect, s, &t[..b])
-            ];
-            v.into_iter().min().unwrap() + 1
-        }
-    };
-
-    rect[(i, j)] = Some(dist);
-    dist
+    count
 }
 
 
@@ -296,7 +243,7 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{hex_to_base64, fixed_xor, hex_to_bytes, challenge3};
-    use super::{repeating_xor, lev};
+    use super::{repeating_xor, count_ones, hamming_distance};
 
     // Test challenge 1
     #[test]
@@ -339,9 +286,30 @@ mod tests {
     }
 
     #[test]
-    fn test_lev() {
+    fn test_count_ones() {
         // actual challenge wants this to be the hamming distance
         // but I'm gonna see if I can do it with levenshtein instead
-        assert_eq!(lev("this is a test", "wokka wokka!!!"), 14);
+        assert_eq!(1, count_ones(0x01));
+        assert_eq!(1, count_ones(0x02));
+        assert_eq!(1, count_ones(0x04));
+        assert_eq!(1, count_ones(0x08));
+        assert_eq!(1, count_ones(0x10));
+        assert_eq!(1, count_ones(0x20));
+        assert_eq!(1, count_ones(0x40));
+        assert_eq!(1, count_ones(0x80));
+        assert_eq!(2, count_ones(0x03));
+        assert_eq!(2, count_ones(0x81));
+        assert_eq!(2, count_ones(0x18));
+        assert_eq!(3, count_ones(0x07));
+        assert_eq!(3, count_ones(0x34));
+        assert_eq!(8, count_ones(0xff));
     }
+
+    #[test]
+    fn test_hamming_distance() {
+        let s1 = b"this is a test";
+        let s2 = b"wokka wokka!!!";
+        assert_eq!(hamming_distance(s1, s2), 37);
+    }
+
 }
