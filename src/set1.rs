@@ -186,10 +186,9 @@ fn hamming_distance(buf1: &[u8], buf2: &[u8]) -> usize {
 
 fn count_ones(mut x: u8) -> usize {
     let mut count = 0;
-    if x & 0x01 > 0 { count += 1; }
-    for _ in 0..7 {
-        x = x >> 1;
+    while x > 0 {
         if x & 0x01 > 0 { count += 1; }
+        x = x >> 1;
     }
     count
 }
