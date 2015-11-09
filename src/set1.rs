@@ -3,7 +3,6 @@ use rustc_serialize::hex::FromHex;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use std::ops::{Index, IndexMut};
 
 
 // Challenge 1
@@ -40,27 +39,22 @@ pub fn single_byte_xor_cipher(s: &str) -> (String, f64) {
     let mut best = String::new();
 
     for key in 0x20..0x7f {
-        // println!("\n\nKEY: {}", key as char);
         let mut v = Vec::new();
         for _ in 0..x.len() { v.push(key); }
 
+        // XOR each byte of `x` with the candidate key
         let xor = fixed_xor(&x, &v);
-        // partial_ascii_display(&xor);
 
         match String::from_utf8(xor) {
             Err(_) => continue,
             Ok(candidate) => {
                 let candidate_score = score(&candidate[..]);
-                // println!("score:  {}", candidate_score);
-
                 if candidate_score > best_score {
                     best_score = candidate_score;
                     best = candidate;
                 }
             },
         }
-        // println!("");
-
     }
 
     (best, best_score)
@@ -71,24 +65,22 @@ pub fn challenge3() -> String {
     single_byte_xor_cipher(output).0
 }
 
-fn score(x: &str) -> f64 {
-    // from http://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
-    let chars = ['e', 't', 'a', 'o', 'i', 'n',
-                 's', 'h', 'r', 'd', 'l', 'c',
-                 'u', 'm', 'w', 'f', 'g', 'y',
-                 'p', 'b', 'v', 'k', 'j', 'x',
-                 'q', 'z'];
-    // round towards even
-    let freqs_array = [0.1270, 0.0906, 0.0817, 0.0751, 0.0697, 0.0675,
-                       0.0633, 0.0609, 0.0599, 0.0425, 0.0402, 0.0278,
-                       0.0276, 0.0241, 0.0236, 0.0223, 0.0202, 0.0197,
-                       0.0193, 0.0149, 0.0098, 0.0077, 0.0015, 0.0015,
-                       0.0100, 0.007];
-    let mut freqs = HashMap::new();
-    for i in 0..chars.len() {
-        freqs.insert(chars[i], freqs_array[i]);
-    }
 
+// from http://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
+const ALPHAS_BY_FREQ: [char; 26] = ['e', 't', 'a', 'o', 'i', 'n',
+                                    's', 'h', 'r', 'd', 'l', 'c',
+                                    'u', 'm', 'w', 'f', 'g', 'y',
+                                    'p', 'b', 'v', 'k', 'j', 'x',
+                                    'q', 'z'];
+
+// round towards even
+const ALPHA_FREQS: [f64; 26] = [0.1270, 0.0906, 0.0817, 0.0751, 0.0697, 0.0675,
+                                0.0633, 0.0609, 0.0599, 0.0425, 0.0402, 0.0278,
+                                0.0276, 0.0241, 0.0236, 0.0223, 0.0202, 0.0197,
+                                0.0193, 0.0149, 0.0098, 0.0077, 0.0015, 0.0015,
+                                0.0100, 0.007];
+
+fn score(x: &str) -> f64 {
     let mut num_occurrences = HashMap::new();
     let mut num_alphas = 0;
     let mut num_whitespace = 0;
@@ -112,58 +104,30 @@ fn score(x: &str) -> f64 {
     let mut total_error = 0.;
 
     // error from alphabetic
-    for ch in freqs.keys() {
-        let expected_occurrences = *freqs.get(ch).unwrap() * (num_alphas as f64);
-        let actual_occurrences = match num_occurrences.get(ch) {
+    for i in 0..26 {
+        let expected_occurrences = ALPHA_FREQS[i] * (num_alphas as f64);
+        let actual_occurrences = match num_occurrences.get(&ALPHAS_BY_FREQ[i]) {
             Some(&count) => count as f64,
             None => 0.,
         };
         let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
-        //println!("{} error = {}", ch, error);
-        total_error += 0.5 * error;
+        total_error += 0.1 * error;
     }
 
-    //println!("alpha error: {}", total_error);
-
-    // error from whitespace characters
-    let avg_word_length = 5.;
-    // find the biggest k such that 5k + k - 1 <= x.len()
-    // (wolfram alpha says the average length of an english word
-    // is 5.1 letters. I'm rounding down to 5 here)
-    let k = (x.len() + 1)/6; // rounds down automatically
-
-    // check if k + 1 is closer
-    // the real condition we want to check is if
-    // |5(k+1) + k - x.len()| < |x.len() - (5k + k - 1)|
-    //
-    // but by assumption k is such that 5k + k - 1 < x.len()
-    // so we can remove absolute value on the right
-    // also we must have 5(k+1) + k > x.len(), because otherwise
-    // k would not be the greatest integer such that 5k + k - 1 <= x.len()
-    // so the absolute value on the left can be removed as well to obtain
-    //
-    // 5k + k + 5 - x.len() < x.len() - 5k - k + 1
-    //
-    // which simplifies to:
-    let num_words = if 5*k + k + 2 < x.len() {
-        k + 1
-    } else {
-        k
-    };
-
-    let expected_occurrences = (num_words - 1) as f64;
+    // wolfram alpha says the average length of an English word is 5.1 letters.
+    // round to 5 for simplicity. if we had k words then, on average we would have
+    // 5k + (k - 1) characters total including spaces between words.
+    // so a string of length `L` should have roughly L/6 - 1 spaces in it.
+    let expected_occurrences = (x.len() as f64) / 6.0 - 1.0;
     let actual_occurrences = num_whitespace as f64;
     let error: f64 = (expected_occurrences - actual_occurrences).powi(2);
-    //println!("ws error = {}", error);
     total_error += 2. * error;
 
 
     // error from non-alphabetic, non-whitespace characters
     // arbitrary guess on how many others there should be: 1 for every 20 characters.
     let expected_occurrences = (x.len() as f64) / 20.;
-    //println!("expected/actual others: {}/{}", expected_occurrences, num_other as f64);
     let error = (expected_occurrences - (num_other as f64)).powi(2);
-    //println!("other error = {}", error);
     total_error += 2. * error;
 
     -total_error
