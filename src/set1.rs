@@ -33,17 +33,29 @@ fn partial_ascii_display(v: &Vec<u8>) {
 
 // Challenge 3
 pub fn single_byte_xor_cipher(s: &str) -> (String, f64) {
-    let x = hex_to_bytes(s);
+    let b = hex_to_bytes(s);
+    let (key, score) = retrieve_single_byte_xor(&b);
 
+    // this pattern is really terrible. TODO: make a function
+    // that doesnt require repeating the key over and over
+    // when xoring
+    let mut v = Vec::new();
+    for _ in 0..b.len() { v.push(key); }
+    let s = String::from_utf8(fixed_xor(&b, &v)).unwrap();
+    (s, score)
+}
+
+// returns (key, score) pair
+fn retrieve_single_byte_xor(b: &[u8]) -> (u8, f64) {
     let mut best_score = ::std::f64::MIN;
-    let mut best = String::new();
+    let mut best = 0;
 
     for key in 0x20..0x7f {
         let mut v = Vec::new();
-        for _ in 0..x.len() { v.push(key); }
+        for _ in 0..b.len() { v.push(key); }
 
-        // XOR each byte of `x` with the candidate key
-        let xor = fixed_xor(&x, &v);
+        // XOR each byte of `b` with the candidate key
+        let xor = fixed_xor(&b, &v);
 
         match String::from_utf8(xor) {
             Err(_) => continue,
@@ -51,7 +63,7 @@ pub fn single_byte_xor_cipher(s: &str) -> (String, f64) {
                 let candidate_score = score(&candidate[..]);
                 if candidate_score > best_score {
                     best_score = candidate_score;
-                    best = candidate;
+                    best = key;
                 }
             },
         }
@@ -191,6 +203,40 @@ fn count_ones(mut x: u8) -> usize {
         x = x >> 1;
     }
     count
+}
+
+fn challenge6() -> ::std::io::Result<String> {
+    let file_name = "data/challenge6.txt";
+    let mut f = try!(File::open(file_name));
+    let mut buf = Vec::new();
+    try!(f.read_to_end(&mut buf));
+    let mut min_dist = ::std::f64::MAX;
+    let mut min_keysize = 2;
+    for keysize in 2..41 {
+        let mut dist = hamming_distance(&buf[0..keysize], 
+                                        &buf[keysize..2*keysize]) as f64 / keysize as f64;
+        dist += hamming_distance(&buf[2*keysize..3*keysize], 
+                                 &buf[3*keysize..4*keysize]) as f64 / keysize as f64;
+        dist /= 2.0;
+
+        if dist < min_dist {
+            min_dist = dist;
+            min_keysize = keysize;
+        }
+    }
+
+    let mut blocks = Vec::new();
+
+    for _ in 0..keysize {
+        let mut v = Vec::new();
+        let mut i = 0;
+        while i < buf.len() {
+            v.push(z
+        }
+        blocks.push(v);
+    }
+
+    Ok(String::from(""))
 }
 
 

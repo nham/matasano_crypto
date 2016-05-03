@@ -1,4 +1,5 @@
 #![feature(convert)]
+#![feature(read_exact)]
 
 extern crate rustc_serialize;
 
